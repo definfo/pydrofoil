@@ -86,6 +86,9 @@
             pydrofoil-riscv = pkgs.callPackage ./package.nix {
               hypothesis = pkgs.pypy2Packages.callPackage ./nix/hypothesis.nix { };
             };
+            pydrofoil-riscv-plugin = pkgs.callPackage ./package-plugin.nix {
+              hypothesis = pkgs.pypy2Packages.callPackage ./nix/hypothesis.nix { };
+            };
             default = pydrofoil-riscv;
           };
         };

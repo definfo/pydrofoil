@@ -28,3 +28,4 @@ jobs:
           name: definfo
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
       - run: nix build .#pydrofoil-riscv --print-out-paths | cachix push definfo
+      - run: nix build .#pydrofoil-riscv-plugin --print-out-paths | cachix push definfo

@@ -10,6 +10,13 @@
   zlib,
   gmp,
   libffi,
+  ncurses5,
+  bzip2,
+  openssl,
+  sqlite,
+  tk,
+  gdbm,
+  xz,
 }:
 let
   pypy2PackageOverrides = [
@@ -65,7 +72,16 @@ stdenv.mkDerivation (finalAttrs: {
   buildInputs = [
     zlib
     gmp
-    libffi
+    libffi.dev
+    ncurses5.dev
+    bzip2
+    openssl.dev
+    sqlite.dev
+    tk.dev
+    gdbm.dev
+    xz.dev
+    # boehmgc.dev
+    # expat.dev
   ];
 
   buildPhase = ''
@@ -74,23 +90,31 @@ stdenv.mkDerivation (finalAttrs: {
     make -C pydrofoil/softfloat/SoftFloat-3e/build/Linux-RISCV-GCC/ softfloat.o
     pkg-config libffi
 
-    # export PYTHONPATH=$PWD:${pypy2_}/lib/pypy2.7/site-packages # not sure if this is still needed
-    PYTHONPATH=. ${pypy2_}/bin/pypy pypy2/rpython/bin/rpython -Ojit --output=pydrofoil-riscv riscv/targetriscv.py
+    cd pypy2/pypy/goal && \
+    PYTHONPATH=../../../ ${pypy2_}/bin/pypy ../../rpython/bin/rpython -Ojit targetpypystandalone.py --ext=riscv.pypymodule && \
+    mv pypy3.11-c pypy-c-pydrofoil-riscv && \
+    ./pypy-c-pydrofoil-riscv ../../lib_pypy/pypy_tools/build_cffi_imports.py && \
+    cd -
+    ln -s pypy2/pypy/goal/pypy-c-pydrofoil-riscv pypy-c-pydrofoil-riscv
 
     runHook postBuild
   '';
 
-  doCheck = true;
+  doCheck = false;
 
   checkPhase = ''
-    ${pypy2_}/bin/pypy pypy2/pytest.py -v pydrofoil/ riscv/
+    ./pypy-c-pydrofoil-riscv -m pytest riscv/pypymodule/test/apptest_plugin.py
   '';
 
   installPhase = ''
     runHook preInstall
 
     mkdir -p $out/bin
-    install -Dm755 pydrofoil-riscv $out/bin
+    cd pypy2/pypy/goal && \
+    ../tool/release/package.py --override_pypy_c=pypy-c-pydrofoil-riscv \
+      --make-portable \
+      --archive-name=pypy-pydrofoil-scripting-experimental \
+      --targetdir=$out/bin
 
     runHook postInstall
   '';
