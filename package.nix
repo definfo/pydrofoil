@@ -74,8 +74,8 @@ stdenv.mkDerivation (finalAttrs: {
     make -C pydrofoil/softfloat/SoftFloat-3e/build/Linux-RISCV-GCC/ softfloat.o
     pkg-config libffi
 
-    # export PYTHONPATH=$PWD:${pypy2_}/lib/pypy2.7/site-packages # not sure if this is still needed
-    PYTHONPATH=. ${pypy2_}/bin/pypy pypy2/rpython/bin/rpython -Ojit --output=pydrofoil-riscv riscv/targetriscv.py
+    export PYTHONPATH=$PWD:${pypy2_}/lib/pypy2.7/site-packages # not sure if this is still needed
+    ${pypy2_}/bin/pypy pypy2/rpython/bin/rpython -Ojit --output=pydrofoil-riscv riscv/targetriscv.py
 
     runHook postBuild
   '';

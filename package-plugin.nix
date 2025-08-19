@@ -1,5 +1,6 @@
 {
   lib,
+  breakpointHook,
   stdenv,
   hypothesis ? null,
   pkg-config,
@@ -10,7 +11,7 @@
   zlib,
   gmp,
   libffi,
-  ncurses5,
+  ncurses,
   bzip2,
   openssl,
   sqlite,
@@ -61,7 +62,13 @@ stdenv.mkDerivation (finalAttrs: {
   # otherwise `inputs.self.submodules` will fail in flake.nix
   src = ./.;
 
+  postPatch = ''
+    substituteInPlace pypy2/lib_pypy/_sqlite3_build.py \
+      --replace-fail "libname = 'sqlite3'" "libname = '@libsqlite@'"
+  '';
+
   nativeBuildInputs = [
+    breakpointHook
     pkg-config
     pypy2_
     python3_
@@ -72,17 +79,21 @@ stdenv.mkDerivation (finalAttrs: {
   buildInputs = [
     zlib
     gmp
-    libffi.dev
-    ncurses5.dev
+    libffi
+    ncurses.dev
     bzip2
+    openssl.out
     openssl.dev
+    sqlite.out
     sqlite.dev
-    tk.dev
-    gdbm.dev
-    xz.dev
+    tk
+    gdbm
+    xz
     # boehmgc.dev
     # expat.dev
   ];
+
+  env.LC_ALL = "C"; # Fix PyPy locale setting
 
   buildPhase = ''
     runHook preBuild
@@ -90,31 +101,37 @@ stdenv.mkDerivation (finalAttrs: {
     make -C pydrofoil/softfloat/SoftFloat-3e/build/Linux-RISCV-GCC/ softfloat.o
     pkg-config libffi
 
-    cd pypy2/pypy/goal && \
-    PYTHONPATH=../../../ ${pypy2_}/bin/pypy ../../rpython/bin/rpython -Ojit targetpypystandalone.py --ext=riscv.pypymodule && \
+    cd pypy2/ && \
+    PYTHONPATH=../:${pypy2_}/lib/pypy2.7/site-packages ${pypy2_}/bin/pypy rpython/bin/rpython \
+      --make-jobs="$NIX_BUILD_CORES" \
+      -Ojit pypy/goal/targetpypystandalone.py \
+      --ext=riscv.pypymodule
     mv pypy3.11-c pypy-c-pydrofoil-riscv && \
-    ./pypy-c-pydrofoil-riscv ../../lib_pypy/pypy_tools/build_cffi_imports.py && \
-    cd -
-    ln -s pypy2/pypy/goal/pypy-c-pydrofoil-riscv pypy-c-pydrofoil-riscv
+    ./pypy-c-pydrofoil-riscv ../../lib_pypy/pypy_tools/build_cffi_imports.py
+    # TODO: move all build artifacts
 
     runHook postBuild
   '';
 
-  doCheck = false;
+  doCheck = true;
 
   checkPhase = ''
-    ./pypy-c-pydrofoil-riscv -m pytest riscv/pypymodule/test/apptest_plugin.py
+    cd pypy2/pypy/goal && \
+    ./pypy-c-pydrofoil-riscv pypy2/pytest.py -v riscv/pypymodule/test/apptest_plugin.py
   '';
 
   installPhase = ''
     runHook preInstall
 
-    mkdir -p $out/bin
     cd pypy2/pypy/goal && \
-    ../tool/release/package.py --override_pypy_c=pypy-c-pydrofoil-riscv \
+    LANG=C ../tool/release/package.py --override_pypy_c=pypy-c-pydrofoil-riscv \
       --make-portable \
       --archive-name=pypy-pydrofoil-scripting-experimental \
-      --targetdir=$out/bin
+      --targetdir=$out
+
+    tar -xvjf $out/pypy-pydrofoil-scripting-experimental.tar.bz2 && \
+    mv $out/pypy-pydrofoil-scripting-experimental/* $out && \
+    rmdir pypy-pydrofoil-scripting-experimental
 
     runHook postInstall
   '';

@@ -21,7 +21,7 @@
       ];
 
       perSystem =
-        { config, pkgs, ... }:
+        { self', config, pkgs, system, ... }:
         {
           devShells.default =
             let
@@ -59,7 +59,7 @@
                 ]
               );
             in
-            pkgs.mkShell {
+            pkgs.mkShell rec {
               shellHook = ''
                 echo 1>&2 "Welcome to the development shell!"
                 echo 1>&2 "PyPy location: $(which pypy)"
@@ -69,6 +69,16 @@
                 zlib
                 gmp
                 libffi
+                zlib
+                gmp
+                libffi
+                ncurses.dev
+                bzip2
+                openssl.dev
+                sqlite.out
+                tk
+                gdbm
+                xz
               ];
 
               packages = with pkgs; [
@@ -80,16 +90,21 @@
                 # bump to unstable version after upstream refactor PR is merged
                 sail-riscv
               ];
+
+              env = {
+                PYTHONPATH = "${pypy2_}/lib/pypy2.7/site-packages";
+                LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";
+              };
             };
 
-          packages = rec {
+          packages = {
             pydrofoil-riscv = pkgs.callPackage ./package.nix {
               hypothesis = pkgs.pypy2Packages.callPackage ./nix/hypothesis.nix { };
             };
             pydrofoil-riscv-plugin = pkgs.callPackage ./package-plugin.nix {
               hypothesis = pkgs.pypy2Packages.callPackage ./nix/hypothesis.nix { };
             };
-            default = pydrofoil-riscv;
+            default = self'.${system}.packages.pydrofoil-riscv;
           };
         };
     };
