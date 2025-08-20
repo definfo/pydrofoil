@@ -5,6 +5,95 @@ ffibuilder = FFI()
 
 # Emulate C API from `class DifftestRef` at https://github.com/OpenXiangShan/riscv-isa-sim/tree/difftest/difftest
 ffibuilder.embedding_api("""
+    typedef uint64_t reg_t;
+
+    typedef struct {
+      uint64_t gpr[32];
+      uint64_t fpr[32];
+      uint64_t priv;
+      uint64_t mstatus;
+      uint64_t sstatus;
+      uint64_t mepc;
+      uint64_t sepc;
+      uint64_t mtval;
+      uint64_t stval;
+      uint64_t mtvec;
+      uint64_t stvec;
+      uint64_t mcause;
+      uint64_t scause;
+      uint64_t satp;
+      uint64_t mip;
+      uint64_t mie;
+      uint64_t mscratch;
+      uint64_t sscratch;
+      uint64_t mideleg;
+      uint64_t medeleg;
+      uint64_t pc;
+
+      uint64_t v;
+      uint64_t mtval2;
+      uint64_t mtinst;
+      uint64_t hstatus;
+      uint64_t hideleg;
+      uint64_t hedeleg;
+      uint64_t hcounteren;
+      uint64_t htval;
+      uint64_t htinst;
+      uint64_t hgatp;
+      uint64_t vsstatus;
+      uint64_t vstvec;
+      uint64_t vsepc;
+      uint64_t vscause;
+      uint64_t vstval;
+      uint64_t vsatp;
+      uint64_t vsscratch;
+
+      union {
+        uint64_t _64[2];
+        uint32_t _32[4];
+        uint16_t _16[8];
+        uint8_t  _8[16];
+      } vr[32];
+      uint64_t vstart;
+      uint64_t vxsat;
+      uint64_t vxrm;
+      uint64_t vcsr;
+      uint64_t vl;
+      uint64_t vtype;
+      uint64_t vlenb;
+
+      uint64_t fcsr;
+
+      uint64_t tselect;
+      uint64_t tdata1;
+      uint64_t tinfo;
+
+      uint64_t debugMode;
+      uint64_t dcsr;
+      uint64_t dpc;
+      uint64_t dscratch0;
+      uint64_t dscratch1;
+    } diff_context_t;
+
+    typedef struct {
+      bool ignore_illegal_mem_access;
+      bool debug_difftest;
+    } diff_ref_config;
+
+    typedef struct {
+      uint64_t sc_failed;
+    } diff_uarch_status;
+
+    typedef struct {
+        bool platform_irp_meip;
+        bool platform_irp_mtip;
+        bool platform_irp_msip;
+        bool platform_irp_seip;
+        bool platform_irp_stip;
+        bool platform_irp_vseip;
+        bool platform_irp_vstip;
+        bool lcofi_req;
+    } diff_non_reg_int;
 
     int difftest_disambiguation_state();
 
@@ -18,9 +107,9 @@ ffibuilder.embedding_api("""
 
     void difftest_pmp_cfg_cpy(void *dut, bool direction);
     
-    void difftest_uarchstatus_sync(void *dut);
+    void difftest_uarchstatus_sync(diff_uarch_status *dut);
     
-    void update_dynamic_config(void* config);
+    void update_dynamic_config(diff_ref_config *config);
     
     void difftest_exec(uint64_t n);
     
@@ -54,8 +143,9 @@ ffibuilder.embedding_api("""
     
     void difftest_set_ramsize(size_t size);
     
-    void difftest_non_reg_interrupt_pending(void *non_reg_interrupt_pending);
-""")
+    void difftest_non_reg_interrupt_pending(diff_non_reg_int *non_reg_interrupt_pending);
+"""
+)
 
 ffibuilder.set_source("pypy-c-pydrofoil-riscv", "")
 
