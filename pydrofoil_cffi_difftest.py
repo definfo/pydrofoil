@@ -174,7 +174,7 @@ ffibuilder.embedding_init_code("""
     def difftest_csrcpy(dut, direction):
         # TODO: implement this
         # cpu.lowlevel.read_CSR()
-        pass
+        csr = cpu.lowlevel.read_CSR(dut)
 
     @ffi.def_extern
     def difftest_pmpcpy(dut, direction):
@@ -289,3 +289,4 @@ ffibuilder.embedding_init_code("""
         # TODO: implement this
         pass
 """)
+ffibuilder.compile(verbose=True)
