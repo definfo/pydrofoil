@@ -2,7 +2,7 @@
   description = "Pydrofoil development environment with flake-parts";
 
   inputs = {
-    self.submodules = true;
+    # self.submodules = true;
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     flake-parts = {
       url = "github:hercules-ci/flake-parts";

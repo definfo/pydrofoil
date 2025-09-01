@@ -147,34 +147,47 @@ ffibuilder.embedding_api("""
 """
 )
 
-ffibuilder.set_source("pypy-c-pydrofoil-riscv", "")
+ffibuilder.set_source("pypy-c-pydrofoil-riscv", None)
 
-ffibuilder.embedding_init_code("""
+ffibuilder.embedding_init_code(f"""
     import _pydrofoil
     from collections import Counter
 
+    ref_cfg = ffi.new(diff_ref_config *) 
+    ref_cfg.ignore_illegal_mem_access = false
+    ref_cfg.debug_difftest = false
 
     @ffi.def_extern
     def difftest_disambiguation_state():
-        # TODO: implement this
-        pass
+        #
+        # def clear_ambiguation_state() 
+        #     smc_tracker.state_reset()
+        #     pte_tracker.state_reset()
+        #     satp_written = false
+        #
+        # s = smc_tracker.state() or pte_tracker.state() or satp_written
+        # clear_ambiguation_state()
+        # return s
 
     @ffi.def_extern
     def difftest_memcpy(addr, buf, n, direction):
-        # TODO: implement this
-        pass
+        if (direction == true): # DIFFTEST -> REF
+            cpu.write_memory(addr, buf, n)
+        else: # DIFFTEST -> DUT
+            print(difftest_memcpy with DIFFTEST_TO_DUT is not supported yet\n)
 
     @ffi.def_extern
     def difftest_regcpy(dut, direction, on_demand):
-        # TODO: implement this
-        # cpu.read_register()
-        pass
+        if (direction == true): # DIFFTEST -> REF
+            for (reg, val) in cpu.register_info():
+               dut_diff_ctx = ffi.cast("diff_context_t *", dut)
+               # TODO: match register names between Pydrofoil and difftest
+        else: # DIFFTEST -> DUT
+            pass
 
     @ffi.def_extern
     def difftest_csrcpy(dut, direction):
-        # TODO: implement this
-        # cpu.lowlevel.read_CSR()
-        csr = cpu.lowlevel.read_CSR(dut)
+        csr = cpu.lowlevel.write_CSR(dut)
 
     @ffi.def_extern
     def difftest_pmpcpy(dut, direction):
@@ -183,7 +196,6 @@ ffibuilder.embedding_init_code("""
 
     @ffi.def_extern
     def difftest_pmp_cfg_cpy(dut, direction):
-        # TODO: implement this
         pass
 
     @ffi.def_extern
@@ -194,7 +206,7 @@ ffibuilder.embedding_init_code("""
     @ffi.def_extern
     def update_dynamic_config(config):
         # TODO: implement this
-        pass
+        ref_cfg = config
 
     @ffi.def_extern
     def difftest_exec(n):
@@ -203,20 +215,18 @@ ffibuilder.embedding_init_code("""
 
     @ffi.def_extern
     def difftest_skip_one(isRVC, wen, wdest, wdata):
-        # TODO: implement this
-        # Currently Pydrofoil does not support this ?
-        pass
+        # xpr, minstret ?
+        pc_addr = cpu.get_register('pc')
+        cpu.write_register('pc', pc_addr + 2 if isRVC else pc_addr + 4)
 
     @ffi.def_extern
     def difftest_init(port):
-        # WTF IS `port` ?
-        # Spike does nothing with it!
         # TODO: select & load elf during build phase
         cpu = _pydrofoil.RISCV64("./riscv/input/rv64-linux-4.15.0-gcc-7.2.0-64mb.bbl", dtb=True)
         cpu.set_verbosity(0)
         
-        # TODO: record variable with Counter
-        # so that we can later dump extra info
+        # record with Counter to dump extra info
+        #
         # cnt = Counter()
 
     @ffi.def_extern
@@ -237,18 +247,16 @@ ffibuilder.embedding_init_code("""
 
     @ffi.def_extern
     def isa_reg_display():
-        # TODO: pretty print
         print(cpu.register_info())
 
     @ffi.def_extern
     def difftest_display():
-        # TODO: Check simpleprofiler.py
+        # TODO: Pretty print as simpleprofiler.py
         # cpu.memory_info(), cpu.register_info(), etc.
         pass
 
     @ffi.def_extern
     def difftest_store_commit(addr, data, mask):
-        # TODO: implement this
         pass
 
     @ffi.def_extern
@@ -262,12 +270,12 @@ ffibuilder.embedding_init_code("""
 
     @ffi.def_extern
     def difftest_load_flash_v2(flash_bin, size):
-        # Seem unsupported ?
+        # unsupported ?
         pass
 
     @ffi.def_extern
     def difftest_load_flash(flash_bin_file, size):
-        # Seem unsupported ?
+        # unsupported ?
         pass
 
     @ffi.def_extern
@@ -281,12 +289,12 @@ ffibuilder.embedding_init_code("""
 
     @ffi.def_extern
     def difftest_set_ramsize(size):
-        # TODO: implement this
+        # unsupported ?
         pass
 
     @ffi.def_extern
     def difftest_non_reg_interrupt_pending(non_reg_interrupt_pending):
-        # TODO: implement this
         pass
 """)
+
 ffibuilder.compile(verbose=True)

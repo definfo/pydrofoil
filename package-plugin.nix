@@ -62,11 +62,6 @@ stdenv.mkDerivation (finalAttrs: {
   # otherwise `inputs.self.submodules` will fail in flake.nix
   src = ./.;
 
-  postPatch = ''
-    substituteInPlace pypy2/lib_pypy/_sqlite3_build.py \
-      --replace-fail "libname = 'sqlite3'" "libname = '@libsqlite@'"
-  '';
-
   nativeBuildInputs = [
     breakpointHook
     pkg-config
@@ -92,8 +87,6 @@ stdenv.mkDerivation (finalAttrs: {
     # boehmgc.dev
     # expat.dev
   ];
-
-  env.LC_ALL = "C"; # Fix PyPy locale setting
 
   buildPhase = ''
     runHook preBuild
