@@ -174,9 +174,10 @@ ffibuilder.embedding_init_code("""
     def difftest_regcpy(dut, direction, on_demand):
         if direction: # True: DIFFTEST -> REF
             dut_diff_ctx = ffi.cast("diff_context_t *", dut)
-            # for reg, val in cpu.register_info():
-            #    # TODO: match register names between Pydrofoil and difftest
-            #    pass
+            for reg, _ in cpu.register_info():
+                # TODO: match register names between Pydrofoil and difftest
+                if dut_diff_ctx[reg]:
+                    cpu.write_register(reg, dut_diff_ctx[reg])
         else: # False: REF -> DIFFTEST
             pass
 
