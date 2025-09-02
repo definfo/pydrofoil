@@ -3,8 +3,10 @@ from cffi import FFI
 
 ffibuilder = FFI()
 
-# Emulate C API from `class DifftestRef` at https://github.com/OpenXiangShan/riscv-isa-sim/tree/difftest/difftest
-ffibuilder.embedding_api("""
+# C definitions for CFFI parsing.
+# CFFI's parser understands standard C types like uint64_t, size_t, etc.
+# We use '_Bool' for boolean types as CFFI can parse it without needing <stdbool.h>.
+c_declarations = """
     typedef uint64_t reg_t;
 
     typedef struct {
@@ -76,8 +78,8 @@ ffibuilder.embedding_api("""
     } diff_context_t;
 
     typedef struct {
-      bool ignore_illegal_mem_access;
-      bool debug_difftest;
+      _Bool ignore_illegal_mem_access;
+      _Bool debug_difftest;
     } diff_ref_config;
 
     typedef struct {
@@ -85,82 +87,73 @@ ffibuilder.embedding_api("""
     } diff_uarch_status;
 
     typedef struct {
-        bool platform_irp_meip;
-        bool platform_irp_mtip;
-        bool platform_irp_msip;
-        bool platform_irp_seip;
-        bool platform_irp_stip;
-        bool platform_irp_vseip;
-        bool platform_irp_vstip;
-        bool lcofi_req;
+        _Bool platform_irp_meip;
+        _Bool platform_irp_mtip;
+        _Bool platform_irp_msip;
+        _Bool platform_irp_seip;
+        _Bool platform_irp_stip;
+        _Bool platform_irp_vseip;
+        _Bool platform_irp_vstip;
+        _Bool lcofi_req;
     } diff_non_reg_int;
 
     int difftest_disambiguation_state();
-
-    void difftest_memcpy(uint64_t addr, void *buf, size_t n, bool direction);
-    
-    void difftest_regcpy(diff_context_t* dut, bool direction, bool on_demand);
-    
-    void difftest_csrcpy(void *dut, bool direction);
-    
-    void difftest_pmpcpy(void *dut, bool direction);    
-
-    void difftest_pmp_cfg_cpy(void *dut, bool direction);
-    
+    void difftest_memcpy(uint64_t addr, void *buf, size_t n, _Bool direction);
+    void difftest_regcpy(diff_context_t* dut, _Bool direction, _Bool on_demand);
+    void difftest_csrcpy(void *dut, _Bool direction);
+    void difftest_pmpcpy(void *dut, _Bool direction);
+    void difftest_pmp_cfg_cpy(void *dut, _Bool direction);
     void difftest_uarchstatus_sync(diff_uarch_status *dut);
-    
     void update_dynamic_config(diff_ref_config *config);
-    
     void difftest_exec(uint64_t n);
-    
-    void difftest_skip_one(bool isRVC, bool wen, uint32_t wdest, uint64_t wdata);
-    
+    void difftest_skip_one(_Bool isRVC, _Bool wen, uint32_t wdest, uint64_t wdata);
     void difftest_init(int port);
-    
     void difftest_raise_intr(uint64_t NO);
-    
     void difftest_dirty_fsvs(uint64_t dirties);
-    
-    bool difftest_raise_critical_error();
-    
+    _Bool difftest_raise_critical_error();
     void isa_reg_display();
-    
     void difftest_display();
-    
     int difftest_store_commit(uint64_t *addr, uint64_t *data, uint8_t *mask);
-    
-    uint64_t difftest_guided_exec(void *);    
-
+    uint64_t difftest_guided_exec(void *);
     void debug_mem_sync(reg_t addr, void* buf, size_t n);
-    
     void difftest_load_flash_v2(const uint8_t *flash_bin, size_t size);
-    
     void difftest_load_flash(const char *flash_bin_file, size_t size);
-    
     void difftest_set_mhartid(int mhartid);
-    
     void difftest_close();
-    
     void difftest_set_ramsize(size_t size);
-    
     void difftest_non_reg_interrupt_pending(diff_non_reg_int *non_reg_interrupt_pending);
 """
+
+# C source for compilation, including necessary headers.
+# The C compiler needs the real headers to know about 'bool', 'uint64_t', etc.
+c_source = """
+    #include <stdbool.h>
+    #include <stdint.h>
+    #include <stddef.h>
+""" + c_declarations.replace("_Bool", "bool")
+
+ffibuilder.embedding_api(c_declarations)
+
+ffibuilder.set_source(
+    "pypy_c_pydrofoil_riscv",
+    c_source,
+    libraries=['pypy3.11-c'],
+    library_dirs=['pydrofoil-scripting/pypy-pydrofoil-scripting-experimental/bin']
 )
 
-ffibuilder.set_source("pypy-c-pydrofoil-riscv", None)
-
-ffibuilder.embedding_init_code(f"""
+ffibuilder.embedding_init_code("""
     import _pydrofoil
     from collections import Counter
 
-    ref_cfg = ffi.new(diff_ref_config *) 
-    ref_cfg.ignore_illegal_mem_access = false
-    ref_cfg.debug_difftest = false
+    cpu = None
+    ref_cfg = ffi.new("diff_ref_config *")
+    ref_cfg.ignore_illegal_mem_access = False
+    ref_cfg.debug_difftest = False
 
     @ffi.def_extern
     def difftest_disambiguation_state():
         #
-        # def clear_ambiguation_state() 
+        # def clear_ambiguation_state()
         #     smc_tracker.state_reset()
         #     pte_tracker.state_reset()
         #     satp_written = false
@@ -168,26 +161,29 @@ ffibuilder.embedding_init_code(f"""
         # s = smc_tracker.state() or pte_tracker.state() or satp_written
         # clear_ambiguation_state()
         # return s
+        return 0
 
     @ffi.def_extern
     def difftest_memcpy(addr, buf, n, direction):
-        if (direction == true): # DIFFTEST -> REF
+        if direction: # True: DIFFTEST -> REF
             cpu.write_memory(addr, buf, n)
-        else: # DIFFTEST -> DUT
-            print(difftest_memcpy with DIFFTEST_TO_DUT is not supported yet\n)
+        else: # False: REF -> DIFFTEST
+            print("difftest_memcpy with REF->DIFFTEST is not supported yet")
 
     @ffi.def_extern
     def difftest_regcpy(dut, direction, on_demand):
-        if (direction == true): # DIFFTEST -> REF
-            for (reg, val) in cpu.register_info():
-               dut_diff_ctx = ffi.cast("diff_context_t *", dut)
-               # TODO: match register names between Pydrofoil and difftest
-        else: # DIFFTEST -> DUT
+        if direction: # True: DIFFTEST -> REF
+            dut_diff_ctx = ffi.cast("diff_context_t *", dut)
+            # for reg, val in cpu.register_info():
+            #    # TODO: match register names between Pydrofoil and difftest
+            #    pass
+        else: # False: REF -> DIFFTEST
             pass
 
     @ffi.def_extern
     def difftest_csrcpy(dut, direction):
-        csr = cpu.lowlevel.write_CSR(dut)
+        # csr = cpu.lowlevel.write_CSR(dut)
+        pass
 
     @ffi.def_extern
     def difftest_pmpcpy(dut, direction):
@@ -206,11 +202,12 @@ ffibuilder.embedding_init_code(f"""
     @ffi.def_extern
     def update_dynamic_config(config):
         # TODO: implement this
+        global ref_cfg
         ref_cfg = config
 
     @ffi.def_extern
     def difftest_exec(n):
-        for _ in range(n):
+        for _ in range(int(n)):
             cpu.step()
 
     @ffi.def_extern
@@ -221,10 +218,11 @@ ffibuilder.embedding_init_code(f"""
 
     @ffi.def_extern
     def difftest_init(port):
+        global cpu
         # TODO: select & load elf during build phase
         cpu = _pydrofoil.RISCV64("./riscv/input/rv64-linux-4.15.0-gcc-7.2.0-64mb.bbl", dtb=True)
         cpu.set_verbosity(0)
-        
+
         # record with Counter to dump extra info
         #
         # cnt = Counter()
@@ -243,7 +241,7 @@ ffibuilder.embedding_init_code(f"""
     def difftest_raise_critical_error():
         # This simply change state variable on Spike's side
         # Not sure if we should mimic such behaviour...
-        pass
+        return False
 
     @ffi.def_extern
     def isa_reg_display():
@@ -257,11 +255,12 @@ ffibuilder.embedding_init_code(f"""
 
     @ffi.def_extern
     def difftest_store_commit(addr, data, mask):
-        pass
+        return 0
 
     @ffi.def_extern
-    def difftest_guided_exec():
+    def difftest_guided_exec(p):
         cpu.step()
+        return 0 # must return an integer
 
     @ffi.def_extern
     def debug_mem_sync(addr, buf, n):
@@ -295,6 +294,7 @@ ffibuilder.embedding_init_code(f"""
     @ffi.def_extern
     def difftest_non_reg_interrupt_pending(non_reg_interrupt_pending):
         pass
-""")
+"""
+)
 
 ffibuilder.compile(verbose=True)
