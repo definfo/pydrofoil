@@ -1,0 +1,48 @@
+$ ./pypy-c-pydrofoil-riscv -d ../../lib_pypy/pypy_tools/build_cffi_imports.py
+calling create_cffi_import_libraries with "embed_dependencies" False
+*  _pypy_util_cffi_inner already built
+*  _blake2 already built
+*  _ssl already built
+* _sqlite3_build.py
+stdout:
+
+stderr:
+Traceback (most recent call last):
+  File "/build/gi4s1kgdbj7sfhhm2arfiigabjzxa9w2-source/pypy2/lib_pypy/_sqlite3_build.py", line 396, in <module>
+    if _has_load_extension():
+       ^^^^^^^^^^^^^^^^^^^^^
+  File "/build/gi4s1kgdbj7sfhhm2arfiigabjzxa9w2-source/pypy2/lib_pypy/_sqlite3_build.py", line 361, in _has_load_extension
+    unverified_lib = unverified_ffi.dlopen(libname)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/build/gi4s1kgdbj7sfhhm2arfiigabjzxa9w2-source/pypy2/lib_pypy/cffi/api.py", line 150, in dlopen
+    lib, function_cache = _make_ffi_library(self, name, flags)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/build/gi4s1kgdbj7sfhhm2arfiigabjzxa9w2-source/pypy2/lib_pypy/cffi/api.py", line 834, in _make_ffi_library
+    backendlib = _load_backend_lib(backend, libname, flags)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/build/gi4s1kgdbj7sfhhm2arfiigabjzxa9w2-source/pypy2/lib_pypy/cffi/api.py", line 830, in _load_backend_lib
+    return backend.load_library(path, flags)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: Cannot load library libsqlite3.so.0: libsqlite3.so.0: cannot open shared object file: No such file or directory
+
+Traceback (most recent call last):
+  File "/build/gi4s1kgdbj7sfhhm2arfiigabjzxa9w2-source/pypy2/lib_pypy/pypy_tools/build_cffi_imports.py", line 285, in create_cffi_import_libraries
+    raise RuntimeError('building {} failed'.format(key))
+RuntimeError: building sqlite3 failed
+*  audioop already built
+*  _tkinter already built
+*  curses already built
+*  syslog already built
+*  _gdbm already built
+*  grp already built
+*  resource already built
+*  lzma already built
+*  _sha3 already built
+*  _posixshmem already built
+*** failed to build the CFFI modules ['_sqlite3_build.py']
+
+PyPy can still be used as long as you don't need the corresponding
+modules.  If you do need them, please install the missing headers and
+libraries (see error messages just above) and then re-run the command:
+
+    /build/gi4s1kgdbj7sfhhm2arfiigabjzxa9w2-source/pypy2/pypy/goal/pypy-c-pydrofoil-riscv ../../lib_pypy/pypy_tools/build_cffi_imports.py

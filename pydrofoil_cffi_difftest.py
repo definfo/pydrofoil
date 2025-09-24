@@ -138,7 +138,7 @@ ffibuilder.set_source(
     "pypy_c_pydrofoil_riscv",
     c_source,
     libraries=['pypy3.11-c'],
-    library_dirs=['pydrofoil-scripting/pypy-pydrofoil-scripting-experimental/bin']
+    library_dirs=['pypy-pydrofoil-scripting-experimental/bin']
 )
 
 ffibuilder.embedding_init_code("""

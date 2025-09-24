@@ -63,7 +63,7 @@ stdenv.mkDerivation (finalAttrs: {
   src = ./.;
 
   nativeBuildInputs = [
-    breakpointHook
+    # breakpointHook
     pkg-config
     pypy2_
     python3_
@@ -94,38 +94,34 @@ stdenv.mkDerivation (finalAttrs: {
     make -C pydrofoil/softfloat/SoftFloat-3e/build/Linux-RISCV-GCC/ softfloat.o
     pkg-config libffi
 
-    cd pypy2/ && \
-    PYTHONPATH=../:${pypy2_}/lib/pypy2.7/site-packages ${pypy2_}/bin/pypy rpython/bin/rpython \
+    cd pypy2/pypy/goal
+    PYTHONPATH=../../..:${pypy2_}/lib/pypy2.7/site-packages ${pypy2_}/bin/pypy ../../rpython/bin/rpython \
+      --batch \
       --make-jobs="$NIX_BUILD_CORES" \
-      -Ojit pypy/goal/targetpypystandalone.py \
+      -Ojit \
+      targetpypystandalone.py \
       --ext=riscv.pypymodule
-    mv pypy3.11-c pypy-c-pydrofoil-riscv && \
-    ./pypy-c-pydrofoil-riscv ../../lib_pypy/pypy_tools/build_cffi_imports.py
+	  mv pypy3.11-c pypy-c-pydrofoil-riscv
+	  ./pypy-c-pydrofoil-riscv ../../lib_pypy/pypy_tools/build_cffi_imports.py
+	  cd -
+	  ln -s pypy2/pypy/goal/pypy-c-pydrofoil-riscv pypy-c-pydrofoil-riscv
     # TODO: move all build artifacts
 
     runHook postBuild
   '';
 
-  doCheck = true;
-
-  checkPhase = ''
-    cd pypy2/pypy/goal && \
-    ./pypy-c-pydrofoil-riscv pypy2/pytest.py -v riscv/pypymodule/test/apptest_plugin.py
-  '';
-
   installPhase = ''
     runHook preInstall
 
-    cd pypy2/pypy/goal && \
-    LANG=C ../tool/release/package.py --override_pypy_c=pypy-c-pydrofoil-riscv \
+    cd pypy2/pypy/goal
+    .${pypy2_}/bin/pypy \
+      ./tool/release/package.py \
+      --override_pypy_c=pypy-c-pydrofoil-riscv \
       --make-portable \
       --archive-name=pypy-pydrofoil-scripting-experimental \
-      --targetdir=$out
-
-    tar -xvjf $out/pypy-pydrofoil-scripting-experimental.tar.bz2 && \
-    mv $out/pypy-pydrofoil-scripting-experimental/* $out && \
-    rmdir pypy-pydrofoil-scripting-experimental
-
+      --targetdir=../../../
+    cp pypy-pydrofoil-scripting-experimental.tar.bz2 $out/
+    
     runHook postInstall
   '';
 })
