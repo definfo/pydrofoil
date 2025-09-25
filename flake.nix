@@ -3,7 +3,7 @@
 
   inputs = {
     self.submodules = true;
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-25.05";
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
@@ -65,43 +65,21 @@
                 echo 1>&2 "PyPy location: $(which pypy)"
               '';
 
-              buildInputs = with pkgs; [
-                zlib
-                gmp
-                libffi
-                zlib
-                gmp
-                libffi
-                ncurses.dev
-                bzip2
-                openssl.dev
-                sqlite.out
-                tk
-                gdbm
-                xz
-              ];
-
               packages = with pkgs; [
                 pypy2_
-                python3_
-                pkg-config
-                z3
-                # TODO:
-                # bump to unstable version after upstream refactor PR is merged
-                sail-riscv
+                self'.${system}.packages.pydrofoil-riscv-plugin
               ];
 
               env = {
-                PYTHONPATH = "${pypy2_}/lib/pypy2.7/site-packages";
-                LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";
+                # PYTHONPATH = "${pypy2_}/lib/pypy2.7/site-packages";
               };
             };
 
           packages = {
-            pydrofoil-riscv = pkgs.callPackage ./package.nix {
+            pydrofoil-riscv = pkgs.callPackage ./nix/package.nix {
               hypothesis = pkgs.pypy2Packages.callPackage ./nix/hypothesis.nix { };
             };
-            pydrofoil-riscv-plugin = pkgs.callPackage ./package-plugin.nix {
+            pydrofoil-riscv-plugin = pkgs.callPackage ./nix/package-plugin.nix {
               hypothesis = pkgs.pypy2Packages.callPackage ./nix/hypothesis.nix { };
             };
             default = self'.${system}.packages.pydrofoil-riscv;
